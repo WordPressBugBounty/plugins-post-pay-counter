@@ -49,14 +49,9 @@ class PPC_auto_update {
      * @param string $plugin_slug
      */
     function __construct( $current_version, $update_path, $plugin_slug, $activation_key_name ) {
-		//Only check every six hours
 		$transient = get_site_transient( 'update_plugins' );
 
 		if( ! is_object( $transient ) OR ! isset( $transient->last_checked ) OR ! isset( $transient->checked ) ) return;
-
-		$checked_plugins = $transient->checked;
-		//if( $transient->last_checked > ( time() - 3600*6 ) AND isset( $checked_plugins[$plugin_slug] ) )
-			//return;
 
         // Set the class public variables
         $this->current_version = $current_version;
@@ -64,7 +59,10 @@ class PPC_auto_update {
         $this->plugin_slug = $plugin_slug;
         $this->activation_key_name = $activation_key_name;
         $this->activation_key = get_option( $activation_key_name );
-		$this->activation_key = $this->activation_key['activation_key'];
+        if( isset( $this->activation_key['activation_key'] ) )
+            $this->activation_key = $this->activation_key['activation_key'];
+        else
+            $this->activation_key = '';
 
         list($t1, $t2) = explode('/', $plugin_slug);
         $this->slug = str_replace('.php', '', $t2);
@@ -147,11 +145,20 @@ class PPC_auto_update {
     }
 
     /**
-     * Return the remote version
+     * Return the remote version.
+     * Cache version request for 3 hours.
      * @return string $remote_version
      */
     public function getRemote_version() {
 		global $ppc_global_settings;
+
+        $transient_name = substr( $this->plugin_slug, 0, max( 160, strlen( $this->plugin_slug ) ) ) . ' --version';
+
+        // Transient name expects to not be SQL-escaped. Must be <= 172 characters in length
+        $version = get_transient( $transient_name );
+        if( $version !== false ) {
+            return $version;
+        }
 
         $request = wp_remote_post( $this->update_path, apply_filters( 'ppcp_autoupdate_get_remote_version_args', array(
             'timeout' => 10,
@@ -166,6 +173,7 @@ class PPC_auto_update {
         ) ) );
 
         if ( ! is_wp_error($request) || wp_remote_retrieve_response_code( $request ) === 200 ) {
+            set_transient( $transient_name, $request['body'], 3600*3 );
             return $request['body'];
         } else {
             new PPC_Error( 'ppcp_get_remote_version_error', 'Could not get latest version from update server.', array(
