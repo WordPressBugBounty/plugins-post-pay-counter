@@ -2,7 +2,7 @@
 Contributors: Ste_95
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=SM5Q9BVU4RT22
 Tags: earnings, authors, payments, revenue sharing, stats
-Tested up to: 6.9
+Tested up to: 7.0
 Stable tag: 2.793
 Requires at least: 3.7
 
